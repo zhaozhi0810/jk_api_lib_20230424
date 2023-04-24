@@ -2,13 +2,13 @@
 * @Author: dazhi
 * @Date:   2022-10-10 16:12:38
 * @Last Modified by:   dazhi
-* @Last Modified time: 2023-04-24 16:52:23
+* @Last Modified time: 2023-04-24 17:03:07
 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-//#include "drv_22134.h"
+#include "drv_22134_api.h"
 #include <utmp.h>
 #include <time.h>
 #include <sys/types.h>
@@ -96,33 +96,18 @@ static int start_server_process(void)
 // }
 
 
-int main(void)
+int main(int argc,char *argv[])
 {
-	printf("enter reboot2\n");
+	printf("enter hj reboot 2023\n");
 	system("sync");
 	//确保server进程存在！！
 	start_server_process();
 
-/*
-	if(drvCoreBrdReset()==0)
-	{
-		printf("执行成功，系统即将重启 \n");
-//		execlp("systemctl","systemctl", "poweroff", NULL);   
-	}	
-	else
-	{
-		printf("ERROR:系统重启执行失败\n");
-	}
-	sleep(1);
-*/
 	//drvIfBrdReset(void)
-	if(drvDisableLcdScreen() == 0)
-	{
-		printf("单片机执行成功，系统即将重启 \n");
-//		execlp("systemctl","systemctl", "poweroff", NULL);   
-	}
+	drvDisableLcdScreen();    //关闭屏幕
+
 	//execlp("systemctl","systemctl", "reboot", NULL); 
-	execlp("systemctl","systemctl", "reboot", NULL);  		  
+	execvp("systemctl",argv);  		  
 //	system("systemctl reboot");  //改为系统重启命令
 }
 
