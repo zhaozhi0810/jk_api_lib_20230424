@@ -94,26 +94,26 @@ extern char md5_readBuf[64];   //´æ·ÅÎÄ¼þµÄmd5
 *	·µ »Ø Öµ: ÎÞ
 *********************************************************************************************************
 */
-static int Int2Str(uint8_t* str,uint32_t arrlen, int32_t intnum)
-{
-	return snprintf(str,arrlen-1,"%d",intnum);
+// static int Int2Str(uint8_t* str,uint32_t arrlen, int32_t intnum)
+// {
+// 	return snprintf(str,arrlen-1,"%d",intnum);
 
-	// for (i = 0; i < 10; i++)
-	// {
-	// 	str[j++] = (intnum / Div) + 48;
+// 	// for (i = 0; i < 10; i++)
+// 	// {
+// 	// 	str[j++] = (intnum / Div) + 48;
 
-	// 	intnum = intnum % Div;
-	// 	Div /= 10;
-	// 	if ((str[j-1] == '0') & (Status == 0))
-	// 	{
-	// 		j = 0;
-	// 	}
-	// 	else
-	// 	{
-	// 		Status++;
-	// 	}
-	// }
-}
+// 	// 	intnum = intnum % Div;
+// 	// 	Div /= 10;
+// 	// 	if ((str[j-1] == '0') & (Status == 0))
+// 	// 	{
+// 	// 		j = 0;
+// 	// 	}
+// 	// 	else
+// 	// 	{
+// 	// 		Status++;
+// 	// 	}
+// 	// }
+// }
 
 /*
 *********************************************************************************************************
@@ -489,7 +489,7 @@ uint8_t Ymodem_Transmit (uint8_t *buf, const uint8_t* sendFileName, uint32_t siz
 		return errors;
 	}
 
-    printf("·¢ËÍ½áÊøÐÅºÅ\r\n");
+    //printf("·¢ËÍ½áÊøÐÅºÅ\r\n");
 
 #if 1
 	/* ³õÊ¼»¯×îºóÒ»°üÒª·¢ËÍµÄÊý¾Ý */
@@ -532,7 +532,7 @@ uint8_t Ymodem_Transmit (uint8_t *buf, const uint8_t* sendFileName, uint32_t siz
 		}
 	}while (!ackReceived && (errors < 0x0A));
 
-        printf("´¦ÀíÍê±Ï\r\n");
+    //    printf("´¦ÀíÍê±Ï\r\n");
 
 	/* ³¬¹ý10´ÎÃ»ÓÐÊÕµ½Ó¦´ð¾ÍÍË³ö */
 	if (errors >=  0x0A)
@@ -581,9 +581,11 @@ uint8_t checksum(uint8_t *buf, uint8_t len)
 	return sum;
 }
 
-
+#if 0
 void send_update_cmd_tomcu(uint8_t phase);
-
+#else
+int  send_update_cmd_tomcu(uint8_t*data,uint8_t phase);
+#endif
 
 //·µ»ØÖµÎª0 ±íÊ¾ÒªÉý¼¶£¬ÆäËûÖµ²»Éý¼¶
 static int ready_to_update(void)
@@ -592,19 +594,44 @@ static int ready_to_update(void)
 	int offset=0;
 	uint8_t csum = 0,c,rsum = 0;
 	int ret;
+	uint8_t i = 0;
 
+#if 0
 	// do{
-	// 	ret = UART_ReceiveByte (data, 1);  //¶ÁÈ¡»º´æµÄ×Ö·û
+	// 	ret = UART_ReceiveByte (data, 2000);  //¶ÁÈ¡»º´æµÄ×Ö·û
+	// 	if(!ret && (data[0] == 0x43))
+	// 	{
+	// 		printf("UART_ReceiveByte 0x43\n");
+	// 		break;
+	// 	}
 	// }while(ret==0);
 	
-//	if(data[0] != 0x43)
+	//if(data[0] != 0x43)
 	{
-		send_update_cmd_tomcu(0);
-		// do{
-		// 	ret = UART_ReceiveByte (data, 1000);  //¶ÁÈ¡»º´æµÄ×Ö·û
-		// }while(ret != 0 || *data != 0xa5);
-		
-		ret = UART_ReceivePacket (data, 35, 2000);
+		printf("send_update_cmd_tomcu(0)\n");
+		do
+		{	
+			send_update_cmd_tomcu(0);		
+			do{
+				i++;
+				if(i>=10)
+				{
+					ret = -1;	
+					break;
+				}
+				ret = UART_ReceiveByte (data, 100);  //¶ÁÈ¡»º´æµÄ×Ö·û
+			}while(ret != 0 || *data != 0xa5);
+			if(ret ==0)
+			{
+				do{
+					ret = UART_ReceiveByte (data+1, 100);  //¶ÁÈ¡»º´æµÄ×Ö·û
+				}while(ret != 0);
+			}			
+			usleep(500000);
+		}		
+		while(*data != 0xa5 || *(data+1)!= 0xa5);
+		//usleep(500000);
+		ret = UART_ReceivePacket (data+2, 33, 1000);
 		if(ret == 0)
 		{
 			rsum = data[34];
@@ -640,10 +667,51 @@ static int ready_to_update(void)
 		}
 		else  //串口接收失败！！
 		{
-			printf("UART_ReceivePacket ret = %d != 0 \n",ret);
+			printf("UART_ReceivePacket 2000 ret = %d != 0 \n",ret);
 			return -1;
 		}
 	}		
+
+#else
+	ret = send_update_cmd_tomcu(data,0);
+
+	if(ret == 0)
+	{
+		rsum = data[34];
+		data[34] = 0;
+		printf("Receive mcu checksum: %s\n",data+2);
+
+		// for(c=0;c<35;c++)
+		// 	printf("%x ",data[c]);
+		// printf("\n");
+
+		csum = checksum(data, 34);
+		if(csum == rsum)  //Ð£Ñé³É¹¦
+		{
+			if(memcmp(data+2,md5_readBuf,32)==0) //md5 ÊÇÏàÍ¬µÄ£¬²»Éý¼¶
+			{
+				printf("md5sum memcmp ret = 0,is the same\n");
+				printf("not need update!!!\n");
+				return 1;
+			}
+			else
+			{
+				printf("md5sum different , readyto update\n");
+				send_update_cmd_tomcu(NULL,1); //ÐèÒªÉý¼¶
+				return 0;
+			}	
+		}
+		else
+		{
+			printf("checksum error csum = %d,rsum = %d\n",csum,rsum);
+			//uart_exit();
+			return -1;
+		}
+	}
+
+
+
+#endif
 
 	printf("ready to update!\n");
 	return 0;
@@ -671,6 +739,7 @@ int xymodem_send(const char *filename)
     int size = 0;
     int bw = 0;
     int readcount = 0, remain = 0;
+    int recv_0x43 = 0;
 
 	ret = get_file_md5sum(filename);
 	if(ret > 0)
@@ -722,62 +791,66 @@ int xymodem_send(const char *filename)
     if (((*(uint32_t*)buf) & 0xfFFE0000 ) != 0x20000000)
 	{
 		printf("image addr 0 != 0x20000000\n");
+		free(buf);
 		return -1;
 	}
 	else if(((*(uint32_t*)(buf+4)) & 0xfFFff000 ) != ApplicationAddress)
 	{
 		printf("image  addr 1 != ApplicationAddress\n");
+		free(buf);
 		return -1;
 	}
 
-
-    do{
-		ret = UART_ReceiveByte (data, 1);  //ºóÃæ¿ÉÄÜÓÐ1¸ö×Ö·û(²»Ò»¶¨)£¬¶ÁÒ»´ÎÊÔÊÔ£¬Ö»µÈ´ý2ms
-	}while(ret==0);
-
-	if(data[0] != 0x43)
-	{
-		if(ready_to_update())   //·µ»ØÖµ²»Îª0£¬²»ÐèÒªÉý¼¶
-			return -1;
-	}
-
-	printf("go to update now!!!");	
-
- //    do{
-	// 	ret = UART_ReceiveByte (data, 1);  //ºóÃæ¿ÉÄÜÓÐ1¸ö×Ö·û(²»Ò»¶¨)£¬¶ÁÒ»´ÎÊÔÊÔ£¬Ö»µÈ´ý2ms
-	// }while(ret==0);
+	//读取缓存中的所有数据
 
 	do
 	{
-		printf("wait for mcu ready ...  ... timeout = %d \n",timeout++);
-		if(timeout >= 600)   //10·ÖÖÓ¹ýÈ¥ÁË
-		{
-			//ÔÙ´ÎÖØÆômcu?
-			printf("wait for mcu ready timeout,abort now \n");
-			//uart_exit();
-			return -1;
-		}
-		ret = UART_ReceiveByte (data,  1000);
-		if(ret == 0)
-		{
-			if(data[0] == 0x43)
-			{
-			//	printf("recive mcu ready \n");
-				break;
-			}						
-		}
+		ret = UART_ReceiveByte (data, 500);  //
+		if(!ret && data[0] == 0x43)
+			recv_0x43 = 1;
+	}while(ret == 0);
 
-		//printf("wait for mcu ready @@@@\n");
-		// else //³¬Ê±Ã»ÓÐÊÕµ½Êý¾ÝÒ²ÊÇ-1
-		// {
-		// 	printf("ERROR: UART_ReceivePacket\n");
-		// 	uart_exit();
-		// 	return -1;
-		// }
-	}while(1);
+	if(!recv_0x43)  //没有收到数据，或者收到的不是0x43
+	{
+		printf("enter ready_to_update\n");
+		if(ready_to_update())   //不等于0就是退出
+		{
+			free(buf);
+			printf("error return : ready_to_update()\n");
+			return -1;
+		}	
+
+		do
+		{
+			printf("wait for mcu ready ...  ... timeout = %d \n",timeout++);
+			if(timeout >= 600)   //10·ÖÖÓ¹ýÈ¥ÁË
+			{
+				printf("wait for mcu ready timeout,abort now \n");
+				free(buf);
+				return -1;
+			}
+			ret = UART_ReceiveByte (data,  1000);
+			if(ret == 0)
+			{
+				printf("3.data[0] = %#x\n",data[0]);
+				if(data[0] == 0x43)
+				{
+					printf("recive 0x43 ----2\n");
+					break;
+				}						
+			}
+		}while(1);
+
+
+	}
+	else
+		printf("recive 0x43 ----1\n");
+
+	printf("go to update now!!!\n");	
 
     Ymodem_Transmit(buf, filename, size);
 
+    free(buf);
     return 0;
 }
 

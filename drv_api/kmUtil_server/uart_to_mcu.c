@@ -216,6 +216,11 @@ static void ProcRecvKeyCmd(void)
 #endif
 
 
+extern pthread_mutex_t mcu_update_mutex;
+
+
+
+
 //串口接收数据处理线程
 void* mcu_recvSerial_thread(void*arg)
 {
@@ -226,8 +231,8 @@ void* mcu_recvSerial_thread(void*arg)
     printf("info_recv_proc_func\n");              
 #endif
 	while(1)
-	{
-		readn = PortRecv(uart_fd, rBuf+offset,datalen);  //从串口读取数据，COM_DATLEN表示需要读的字节数
+	{	
+		readn = PortRecv(uart_fd, rBuf+offset,datalen,1000);  //从串口读取数据，COM_DATLEN表示需要读的字节数
 #ifdef PRINT_DEBUG
 		printf("info_recv_proc_func readn = %d\n",readn);
 #endif
@@ -285,7 +290,7 @@ void* mcu_recvSerial_thread(void*arg)
 		}
 		else
 			sleep(1);
-
+		
 	}//while(1)
 	return NULL;
 }
@@ -393,7 +398,9 @@ int uart_init(int argc, char *argv[])
 
 //	create_queue(&keyCmdQueue);//´´½¨¼üÅÌÏûÏ¢»·ÐÎ¶ÓÁÐ
 //	create_queue(&mouseCmdQueue);//´´½¨Êó±êÏûÏ¢»·ÐÎ¶ÓÁÐ
-	printf("Program %s is running\n", argv[0]);
+	if(argv)
+		printf("Program %s is running\n", argv[0]);
+	
     if(argc > 1)
 	{
 	//	printf("usage: ./kmUtil keyboardComName mouseComName\n");		
@@ -481,8 +488,94 @@ void uart_exit(void)
 }
 
 
+#if 0
+
+/*
+*********************************************************************************************************
+*	函 数 名: UART_ReceiveByte
+*	功能说明: 接收发送端发来的字符         
+*	形    参：c  字符
+*             timeout  溢出时间
+*	返 回 值: 0 接收成功， -1 接收失败
+*********************************************************************************************************
+*/
+int UART_ReceiveByte (uint8_t *c, uint32_t timeout)
+{
+	int ret;
+	ret = PortRecv(uart_fd, c, 1,timeout);
+
+	if(ret<=0)
+		printf("ERROR:UART_ReceiveByte\n");
+
+	return (ret>0)?0:-1;
+}
+
+/*
+*********************************************************************************************************
+*	函 数 名: UART_ReceivePacket
+*	功能说明: 接收发送端发来的字符         
+*	形    参：data  数据
+*             timeout  溢出时间
+*	返 回 值: 0 接收成功， -1 接收失败
+*********************************************************************************************************
+*/
+int UART_ReceivePacket (uint8_t *data, uint16_t length, uint32_t timeout)
+{
+	uint8_t i;
+	int ret;
+
+	ret = PortRecv(uart_fd, data, length,timeout);   //返回读到的字节数
+
+	if(ret <= 0)
+		printf("ERROR:UART_ReceivePacket,length = %d,ret = %d\n",length,ret);
+	else
+	{
+		printf("UART_ReceivePacket,length = %d,ret = %d\n",length,ret);
+		for(i=0;i<ret;i++)
+			printf("%#x ",data[i]);
+		printf("\n");
 
 
+	}	
+	return (length == ret)?0:-1;
+}
+
+
+
+
+
+
+/*
+*********************************************************************************************************
+*	函 数 名: Uart_SendByte
+*	功能说明: 发送一个字节数据         
+*	形    参：c  字符
+*	返 回 值: 0
+*********************************************************************************************************
+*/
+void UART_SendByte (uint8_t c)
+{
+	PortSend(uart_fd,&c, 1);
+}
+
+
+
+
+/*
+*********************************************************************************************************
+*	函 数 名: UART_SendPacket
+*	功能说明: 发送一串数据
+*	形    参: data  数据
+*             length  数据长度
+*	返 回 值: 无
+*********************************************************************************************************
+*/
+void UART_SendPacket(uint8_t *data, uint16_t length)
+{
+	PortSend(uart_fd,data, length);
+}
+
+#endif
 
 #if 0
 
@@ -615,3 +708,8 @@ int main(int argc, char *argv[])
 }
 
 #endif
+
+
+
+
+

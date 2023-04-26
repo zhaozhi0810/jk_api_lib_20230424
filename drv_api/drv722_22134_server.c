@@ -31,6 +31,8 @@
 
 #include "my_log.h"
 #include "my_ipc_msgq.h"
+
+
 #include "uart_to_mcu.h"
 #include "threadpool.h"
 #include "uinput_dev.h"
@@ -292,7 +294,7 @@ static void answer_to_api(msgq_t *pmsgbuf)
 			msgbuf.param1 = 1;  //表示操作正常
 			//g_control_ttyS0 = pmsgbuf->param1;  //根据这个值变化
 			if(!pmsgbuf->param1)  //0 就退出
-				{
+			{
 				uart_exit(); 
 			}
 			else
@@ -321,7 +323,7 @@ void* api_answer_thread(void *arg)
 	msgq_t *pmsgbuf = (msgq_t*)arg;
 
 	answer_to_api(pmsgbuf);    //处理接收到的信息
-		
+
 	//内存记得释放
 	free(pmsgbuf);
 	return NULL;	
@@ -465,12 +467,12 @@ static int s_signal_init(void) {
 	CHECK(!sigaddset(&act.sa_mask, SIGINT), -1, "Error sigaddset with %d: %s", errno, strerror(errno));
 	CHECK(!sigaddset(&act.sa_mask, SIGQUIT), -1, "Error sigaddset with %d: %s", errno, strerror(errno));
 	CHECK(!sigaddset(&act.sa_mask, SIGTERM), -1, "Error sigaddset with %d: %s", errno, strerror(errno));
-	CHECK(!sigaddset(&act.sa_mask, SIGKILL), -1, "Error sigaddset with %d: %s", errno, strerror(errno));
+//	CHECK(!sigaddset(&act.sa_mask, SIGKILL), -1, "Error sigaddset with %d: %s", errno, strerror(errno));
 	act.sa_handler = s_sighandler;
 	CHECK(!sigaction(SIGINT, &act, NULL), -1, "Error sigaction with %d: %s", errno, strerror(errno));
 	CHECK(!sigaction(SIGQUIT, &act, NULL), -1, "Error sigaction with %d: %s", errno, strerror(errno));
 	CHECK(!sigaction(SIGTERM, &act, NULL), -1, "Error sigaction with %d: %s", errno, strerror(errno));
-	CHECK(!sigaction(SIGKILL, &act, NULL), -1, "Error sigaction with %d: %s", errno, strerror(errno));
+//	CHECK(!sigaction(SIGKILL, &act, NULL), -1, "Error sigaction with %d: %s", errno, strerror(errno));
 	return 0;
 }
 
@@ -483,10 +485,12 @@ static int s_signal_init(void) {
 sure that you have inserted the uinput.ko into kernel. */ 
 int main(int argc, char *argv[]) 
 {
-	int t;
+//	int t;
 	int log_enable = 0;   //不开启日志
 //	int i2c_device_es8388_addr = -1;  //8388 iic设备地址
 	int es8388i2c_adapter_fd = -1;
+	pthread_t mcu_uart_rcv_thread;
+
 	printf("%s running,%s\n",argv[0],g_build_time_str);
 
 	if(argc >= 2)  //只判断两个参数中的第二个，其他参数不判断
@@ -574,50 +578,13 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+
+	pthread_create(&mcu_uart_rcv_thread, NULL, mcu_recvSerial_thread, NULL);
+	
+
 	if(server_in_debug_mode)	
 		printf("ServerDEBUG: serverProcess uart init ok!!!\n");
 
-
-	//2022-12-21 
-	// t = system("amixer set PCM 90% > /dev/null &");
-	// t = system("amixer set 'Output 1' 90% > /dev/null &");
-	// t = system("amixer set 'Output 2' 90% > /dev/null &");
-	// t = system("alsactl store > /dev/null &");
-	
-#if 0
-	i2c_device_es8388_addr = es8388_find_iic_devaddr();
-	printf("serverProcess: i2c_device_es8388_addr = %d\n",i2c_device_es8388_addr);
-	es8388i2c_adapter_fd = i2c_adapter_init(I2C_ADAPTER_ES8388, i2c_device_es8388_addr);
-	if(es8388i2c_adapter_fd < 0) //不为0，表示出错！！
-	{
-		drvSetTuneVal(1);  //设置pcm音量值，0-192，值越大声音越小
-		drvSetSpeakVolume(95); //设值扬声器音量值，0-100，值越大声音越大
-
-		
-		s_write_reg(es8388i2c_adapter_fd,0x3, 0xff);  //power off adc
-		s_write_reg(es8388i2c_adapter_fd,0x9, 0x11);   //0x88这个就是最大值
-		s_write_reg(es8388i2c_adapter_fd,0x26, 0x12);  
-		s_write_reg(es8388i2c_adapter_fd,0x27, 0xb8);
-		s_write_reg(es8388i2c_adapter_fd,0x2a, 0xb8);
-		s_write_reg(es8388i2c_adapter_fd,0x12, 0xea);   //ALC OFF
-		s_write_reg(es8388i2c_adapter_fd,0x13, 0xc0);
-		s_write_reg(es8388i2c_adapter_fd,0x14, 0x12);
-		s_write_reg(es8388i2c_adapter_fd,0x15, 0x06);
-		s_write_reg(es8388i2c_adapter_fd,0x16, 0xc3);
-		s_write_reg(es8388i2c_adapter_fd,0x04, 0xc0);  
-		s_write_reg(es8388i2c_adapter_fd,0x3, 0x09);  //power up adc
-		s_write_reg(es8388i2c_adapter_fd,0x30, 0x21);
-		s_write_reg(es8388i2c_adapter_fd,0x1a, 0x0);
-		s_write_reg(es8388i2c_adapter_fd,0x1b, 0x0);
-
-		
-		i2c_adapter_exit(es8388i2c_adapter_fd);
-		if(server_in_debug_mode)	
-			printf("ServerDEBUG: serverProcess Volume  set ok!!!\n");
-	}
-	else
-		printf("serverProcess: ERROR: i2c_init es8388 failed!!!\n");	
-#endif	
 
 	//线程池初始化
 	pool = threadpool_init(4,6);  //初始有多少线程，最多有多少任务排队
@@ -625,7 +592,7 @@ int main(int argc, char *argv[])
 	if(server_in_debug_mode)	
 		printf("ServerDEBUG: serverProcess threadpool  init ok!!!\n");
 	//串口任务，独占一个线程
-	threadpool_add_job(pool,mcu_recvSerial_thread,/*&g_datas*/&t);  //串口接收,线程启动后不再退出！！！
+	//threadpool_add_job(pool,mcu_recvSerial_thread,/*&g_datas*/&t);  //串口接收,线程启动后不再退出！！！
 	
 	if(server_in_debug_mode)	
 		printf("ServerDEBUG: serverProcess ready to run msg thread!!!\n");

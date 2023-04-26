@@ -182,13 +182,20 @@ int UART_ReceivePacket (uint8_t *data, uint16_t length, uint32_t timeout)
 	uint8_t i;
 	int ret;
 
-//	printf("UART_ReceivePacket length = %d timeout = %d\n",length,timeout);
 	ret = PortRecv(uart_fd, data, length,timeout);   //返回读到的字节数
 
 	if(ret <= 0)
 		printf("ERROR:UART_ReceivePacket,length = %d,ret = %d\n",length,ret);
+	else
+	{
+		printf("UART_ReceivePacket,length = %d,ret = %d\n",length,ret);
+		for(i=0;i<ret;i++)
+			printf("%#x ",data[i]);
+		printf("\n");
 
-	return (ret == length)?0:-1;
+
+	}	
+	return (length == ret)?0:-1;
 }
 
 

@@ -310,14 +310,14 @@ int PortRecv(int fdcom, unsigned char *data, uint16_t  datalen,unsigned int time
 					break;
 				}	
             	readlen += ret;
-    //         	printf("PortRecv readlen = %d datalen = %d\n",readlen,datalen);
+            // 	printf("PortRecv readlen = %d datalen = %d\n",readlen,datalen);
     //         	for(i=0;i<readlen;i++)
 				// 	printf("%x ",data[i]);	
 				// printf("\n");	
             }
         }               
-		// else
-		//    printf("No data within five seconds.\n");														
+		else
+		   printf("No data within %d seconds.\n",time_out);														
 	}while(retry --);	//一次只能读到32个字节，看情况定吧
 	
 	return readlen;

@@ -34,7 +34,7 @@ int drvControlttyS0(int val);  //因为要升级单片机程序，需要临时�
 
 
 
-
+#if 0
 void send_update_cmd_tomcu(uint8_t phase)
 {
 	uint8_t buf[] = {0xa5,74,0,0xef};   //Éý¼¶ÃüÁî
@@ -47,6 +47,66 @@ void send_update_cmd_tomcu(uint8_t phase)
 
 	UART_SendPacket(buf, 4);   //4¸ö×Ö½Ú·¢³öÈ¥
 }
+
+#else
+
+int  send_update_cmd_tomcu(uint8_t*data,uint8_t phase)
+{
+	uint8_t buf[] = {0xa5,74,0,0xef};   //Éý¼¶ÃüÁî
+	int ret;
+	int i = 0;
+	
+
+	if(phase)
+	{
+		buf[2] = 1;  //确认需要下载
+		buf[3] = 0xf0;	//check sum
+		UART_SendPacket(buf, 4);   //4¸ö×Ö½Ú·¢³öÈ¥
+	}	
+	else
+	{
+		do
+		{
+			if(i == 0)
+			{
+				UART_SendPacket(buf, 4);   //4¸ö×Ö½Ú·¢³öÈ¥
+				usleep(100000);
+			}
+
+			ret = UART_ReceiveByte (data+i, 100);
+			if(ret == 0)
+			{
+				if(i == 0)
+				{
+					if(data[0] == 0x5a)
+						i++;
+				}
+				else if(i == 1)
+				{
+					if(data[1] == 0xa5)
+						i++;
+					else
+						i = 0;
+				}
+				else if(i < 34)
+					i++;
+				else
+				{
+				//	i = 0;
+					break;
+				}
+			}
+			//printf("i=%d\n",i);		
+			
+		}
+		while(1);
+	}
+
+	return 0;
+}
+
+#endif
+
 
 
 
@@ -96,10 +156,8 @@ static int is_server_process_start(char * cmd_name)
 int main(int argc,char* argv[]) 
 {
 	char* filename = "./app.bin";
-	int get_name = 0;
-	int c,ret;
-
-
+	int get_name = 0,c;
+	int serverflag = 0;//,ret
 
     if(argc != 1)
 	{	
@@ -129,30 +187,26 @@ int main(int argc,char* argv[])
 	    }
 	}
 
-
-
-	uart_init(argc, argv);
-
-
 	if(1 == is_server_process_start("drv722_22134_server"))  //存在server进程
 	{
-		//	system("/root/drv722api_disable_wtd");
-		//system("killall drv722_22134_server");   //杀掉进程
-		//
-		drvControlttyS0(0);  //drv722_22134_server关闭串口
-		printf("drv722_22134_server is running!!\n");
-	}
-
-
-
+		system("killall drv722_22134_server");
+		// serverflag = 1;
+		// drvControlttyS0(0);  //drv722_22134_server关闭串口
+		// printf("drv722_22134_server is running!!\n");
+	}	
+	uart_init(argc, argv);
+	//sleep(1);
 
 	//sleep(1);
 
     if(0 == xymodem_send(filename))
     	printf("%s is done!\n",argv[0]);
 
-    uart_exit() ;
-    drvControlttyS0(1);  //drv722_22134_server开启串口
+
+    uart_exit() ;   //关闭打开的串口
+    // if(serverflag)  //服务存在，则通知服务程序
+    // 	drvControlttyS0(1);  //drv722_22134_server开启串口
+
     return 0;
 }
 

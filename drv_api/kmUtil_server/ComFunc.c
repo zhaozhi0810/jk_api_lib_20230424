@@ -246,7 +246,7 @@ int PortSend(int fdcom,unsigned char *data, unsigned char datalen)
     	if(ret < 0)   //发送失败
 		{
 			printf("PortSend write error!\n");
-			pthread_mutex_unlock(&uart_write_mutex);
+		//	pthread_mutex_unlock(&uart_write_mutex);
 			return -1;
 		}
 		len += ret;	//实际写入的长度
@@ -271,6 +271,71 @@ int PortSend(int fdcom,unsigned char *data, unsigned char datalen)
  * 		>0 表示收到的字节数，正常应该等于datalen（要求的字节数）
  *      其他: 错误.
 ********************************************/
+#if 1
+
+int PortRecv(int fdcom, unsigned char *data, uint16_t  datalen,unsigned int time_out)
+{
+	int ret,retry = 0;
+	unsigned char readlen;
+	struct timeval tv;
+	struct timeval *ptv = NULL;
+	fd_set rfds;
+
+	if ( -1 == fdcom )
+	{
+		printf("error: PortRecv fdcom == -1\n");
+		return -1;
+	}
+
+	if(datalen == 0)  //接收的长度不应该为0
+		return 0;
+
+
+
+	/* Wait up to some seconds. */
+	if(time_out){
+		tv.tv_sec = time_out/1000;
+		tv.tv_usec = time_out%1000*1000; //由于这里设置的是us，得到的ms值需要再乘以1000，得出多少us
+		ptv = &tv;
+	}
+
+	readlen = 0;	//已经接收的字节数
+	//printf("PortRecv readlen = 0 datalen = %d\n",datalen);
+	retry = datalen/32;  //好像缓存只有32个字节，超过32的话，就需要多试几次
+	//printf("retry  %d\n",retry);
+	do{
+		FD_ZERO(&rfds);
+		FD_SET(fdcom, &rfds);
+		ret = select(fdcom+1, &rfds, NULL, NULL, ptv);
+		if (ret == -1)
+               perror("select()");
+        else if (ret)
+        {
+        //	printf("Data is available now.\n");
+            if(FD_ISSET(fdcom, &rfds))
+            {
+            	ret = read(fdcom, data+readlen, datalen-readlen);
+            	if(ret < 0)   //读取失败
+				{
+					printf("error: PortRecv read\n");
+					break;
+				}	
+            	readlen += ret;
+             	//printf("PortRecv readlen = %d datalen = %d\n",readlen,datalen);
+    //         	for(i=0;i<readlen;i++)
+				// 	printf("%x ",data[i]);	
+				// printf("\n");	
+            }
+        }               
+		else
+		   printf("No data within %d mseconds.\n",time_out);														
+	}while(retry --);	//一次只能读到32个字节，看情况定吧
+	
+	return readlen;
+}
+
+
+#else
 int PortRecv(int fdcom, unsigned char *data, unsigned char  datalen)
 {
 	int ret;
@@ -300,3 +365,7 @@ int PortRecv(int fdcom, unsigned char *data, unsigned char  datalen)
 	
 	return readlen;
 }
+
+#endif
+
+
