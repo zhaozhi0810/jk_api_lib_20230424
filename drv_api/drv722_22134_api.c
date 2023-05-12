@@ -1049,7 +1049,7 @@ void drvAddSpeakVolume(int value)
 	CHECK(value > 0 && value <= 100, , "Error value out of range!");
 	unsigned char val = 0;
 	unsigned char val_max = 0x21;
-	unsigned char val_step = val_max*value/100;
+	unsigned char val_step = (val_max-20)*value/100;
 
 	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL26, &val), , "Error s_read_reg!");
 	val += val_step;
@@ -1064,11 +1064,11 @@ void drvSubSpeakVolume(int value)
 	CHECK(value > 0 && value <= 100, , "Error value out of range!");
 	unsigned char val = 0;
 	unsigned char val_max = 0x21;
-	unsigned char val_step = val_max*value/100;
+	unsigned char val_step = (val_max-20)*value/100;
 
 	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL26, &val), , "Error s_read_reg!");
 	val -= val_step;
-	val = (val < 0)? 0:val;
+	val = (val < 20)? 20:val;
 	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL26, val), , "Error s_write_reg!");
 }
 
@@ -1077,24 +1077,9 @@ void drvSetSpeakVolume(int value)
 {
 //	amixer_vol_left_control(Output_2,value,' ');
 	CHECK(value > 0 && value <= 100, , "Error value out of range!");
-	// unsigned char val = 0;
-	// unsigned char val_max = 0x21;
-
-//	if(value > 50)   //2023-03-07,进行了一些调整
-//	{
-//		value = 8*(value-50)/50 + 25;
-//	}
-//	else{	
-//		value = 25*value/50;
-//	}
-
 
 	value = 13*(value)/100 + 20;
-
 	
-	//CHECK(!s_read_reg(ES8388_DACCONTROL26, &val), , "Error s_read_reg!");
-	//val -= val_step;
-	//val = (val < 0)? 0:val;
 	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL26, value), , "Error s_write_reg!");
 }
 
@@ -1104,12 +1089,12 @@ void drvAddHandVolume(int value)
 	CHECK(value > 0 && value <= 100, , "Error value out of range!");
 	unsigned char val = 0;
 	unsigned char val_max = 0x21;
-	unsigned char val_step = val_max*value/100;
+	unsigned char val_step = (val_max-20)*value/100;
 
-	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL25, &val), , "Error s_read_reg!");
+	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL27, &val), , "Error s_read_reg!");
 	val += val_step;
 	val = (val > val_max)? val_max:val;
-	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL25, val), , "Error s_write_reg!");
+	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL27, val), , "Error s_write_reg!");
 }
 
 //50.减少手柄音量，通道2的右声道
@@ -1118,27 +1103,20 @@ void drvSubHandVolume(int value)
 	CHECK(value > 0 && value <= 100, , "Error value out of range!");
 	unsigned char val = 0;
 	unsigned char val_max = 0x21;
-	unsigned char val_step = val_max*value/100;
+	unsigned char val_step = (val_max-20)*value/100;
 
-	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL25, &val), , "Error s_read_reg!");
+	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL27, &val), , "Error s_read_reg!");
 	val -= val_step;
-	val = (val < 0)? 0:val;
-	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL25, val), , "Error s_write_reg!");
+	val = (val < 20)? 20:val;
+	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL27, val), , "Error s_write_reg!");
 }
 
 //51.设置手柄音量值，通道2的右声道
 void drvSetHandVolume(int value)
 {
 	CHECK(value >= 0 && value <= 100, , "Error value out of range!");
-	value = 0x21*value/100;
-	// unsigned char val = 0;
-	// unsigned char val_max = 0x21;
-	// unsigned char val_step = val_max*value/100;
-
-	// CHECK(!s_read_reg(ES8388_DACCONTROL25, &val), , "Error s_read_reg!");
-	// val -= val_step;
-	// val = (val < 0)? 0:val;
-	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL25, value), , "Error s_write_reg!");
+	value = 13*(value)/100 + 20;	
+	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL27, value), , "Error s_write_reg!");
 }
 
 //52.增加耳机音量  通道1 的左右声道
@@ -1148,7 +1126,7 @@ void drvAddEarphVolume(int value)
 	CHECK(value > 0 && value <= 100, , "Error value out of range!");
 	unsigned char val = 0;
 	unsigned char val_max = 0x21;
-	unsigned char val_step = val_max*value/100;
+	unsigned char val_step = (val_max-20)*value/100;
 
 //	CHECK(!s_read_reg(ES8388_DACCONTROL27, &val), , "Error s_read_reg!");
 	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL24, &val), , "Error s_read_reg!");
@@ -1166,12 +1144,12 @@ void drvSubEarphVolume(int value)
 	CHECK(value > 0 && value <= 100, , "Error value out of range!");
 	unsigned char val = 0;
 	unsigned char val_max = 0x21;
-	unsigned char val_step = val_max*value/100;
+	unsigned char val_step = (val_max-20)*value/100;
 
 	//CHECK(!s_read_reg(ES8388_DACCONTROL27, &val), , "Error s_read_reg!");
 	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL24, &val), , "Error s_read_reg!");
 	val -= val_step;
-	val = (val < 0)? 0:val;
+	val = (val < 20)? 20:val;
 	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL24, val), , "Error s_write_reg!");
 	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL25, val), , "Error s_write_reg!");
 }
@@ -1181,7 +1159,7 @@ void drvSetEarphVolume(int value)
 {
 //	amixer_vol_control(Output_1,value,' ');
 	CHECK(value >= 0 && value <= 100, , "Error value out of range!");
-	value = 0x21*value/100;
+	value = 13*(value)/100 + 20;
 	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL24, value), , "Error s_write_reg!");
 	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL25, value), , "Error s_write_reg!");
 }

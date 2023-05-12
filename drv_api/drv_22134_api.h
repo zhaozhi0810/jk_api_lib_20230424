@@ -212,7 +212,7 @@ int drvShowMcuVersion(void);  //显示单片机的版本
 
 //70.需要server关闭串口，防止升级失败
 //val: 0 表示临时关闭，1表示开启
-int drvControlttyS0(int val);  //显示单片机的版本
+int drvControlttyS0(int val);  //控制串口的打开和关闭
 
 
 #endif
