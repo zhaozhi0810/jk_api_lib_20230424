@@ -78,6 +78,18 @@ static int es8388i2c_adapter_fd = -1;  //文件描述符,2022-12-19
 
 static const char* g_build_time_str = "Buildtime :"__DATE__" "__TIME__;   //获得编译时间
 
+#define VOL_MUTE_HANDLE_BY_REDUCE   //hj的需要在drv中控制
+
+#ifdef VOL_MUTE_HANDLE_BY_REDUCE
+//2023-02-24  4个通道音量临时保存
+static unsigned char output_vol[4] = {0x1c,0x1c,0x1c,0x1c};
+//static unsigned char output_vol_control[4] = {0,0,0,0};   //
+
+#endif
+
+
+
+
 
 //val 非0表示打印一般的调试信息，0则不打印调试信息，默认不打印
 void set_print_debug(int val)
@@ -90,6 +102,9 @@ void set_print_debug(int val)
 static int CoreBoardInit = 0;   //初始化了吗？初始化成功为1，失败为-1。
 //static int KeyboardTypepins[3]={-1,-1,-1};  //用于键盘识别的
 static int MicCtrl_pin = -1;   //2022-12-13  mic_ctrl 引脚改由3399控制 GPIO2D0
+
+
+
 
 //static int lock_fd = -1;
 //int atexit(void (*function)(void));
@@ -470,9 +485,21 @@ void drvDisableSpeaker(void)
 {
 	//通道2左声道 是否是音量调为0？
 	unsigned char val = 0;
-	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, &val), , "Error s_read_reg!");
+	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, &val), , "drvDisableSpeaker ES8388_DACPOWER Error s_read_reg!");
+
+	if(!(val & (0x1 << 3)))  //已经是0了，不再动作了,只关闭一次
+	{
+		return ;
+	}
+
 	val &= ~(0x1 << 3);
-	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, val), , "Error s_write_reg!");
+	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, val), , "drvDisableSpeaker ES8388_DACPOWER Error s_write_reg!");
+
+#ifdef VOL_MUTE_HANDLE_BY_REDUCE	
+		//对应的通道的音量也要调到0
+	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL26, &output_vol[0]), , "drvDisableSpeaker DACCONTROL26 Error s_read_reg!");
+	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL26, 0), , "drvDisableSpeaker DACCONTROL26  Error s_write_reg 0!");
+#endif	
 
 }
 
@@ -482,8 +509,22 @@ void drvEnableSpeaker(void)
 	//通道2左声道 是否是音量调为80？
 	unsigned char val = 0;
 	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, &val), , "Error s_read_reg!");
+
+	if((val & (0x1 << 3)))  //已经是1了，不再动作了
+	{
+		return ;
+	}
+
 	val |= (0x1 << 3);
 	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, val), , "Error s_write_reg!");
+
+#ifdef VOL_MUTE_HANDLE_BY_REDUCE	
+			//对应的通道的音量也要恢复
+	if(output_vol[1])
+		CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL26, output_vol[1]), , "drvDisableSpeaker DACCONTROL26  Error s_write_reg 0!");
+	
+#endif	
+
 }
 
 //9. 关闭强声器  //3399的AG4管脚置1  //接口板芯片U5的2脚
@@ -1078,7 +1119,8 @@ void drvSetSpeakVolume(int value)
 //	amixer_vol_left_control(Output_2,value,' ');
 	CHECK(value > 0 && value <= 100, , "Error value out of range!");
 
-	value = 13*(value)/100 + 20;
+	if(value) 
+		value = 13*(value)/100 + 20;
 	
 	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL26, value), , "Error s_write_reg!");
 }
@@ -1115,7 +1157,9 @@ void drvSubHandVolume(int value)
 void drvSetHandVolume(int value)
 {
 	CHECK(value >= 0 && value <= 100, , "Error value out of range!");
-	value = 13*(value)/100 + 20;	
+	if(value)   
+		value = 13*(value)/100 + 20;	
+
 	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL27, value), , "Error s_write_reg!");
 }
 
@@ -1169,8 +1213,20 @@ void drvEnableHandout(void)
 {
 	unsigned char val = 0;
 	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, &val), , "Error s_read_reg!");
+	if(val & (0x1 << 2))
+	{
+		return;
+	}
 	val |= (0x1 << 2);
 	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, val), , "Error s_write_reg!");
+
+#ifdef VOL_MUTE_HANDLE_BY_REDUCE	
+			//对应的通道的音量也要恢复
+	if(output_vol[1])  //大于0才写
+		CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL27, output_vol[1]), , "drvEnableHandout ES8388_DACCONTROL27	Error s_write_reg 0!");
+#endif	
+
+
 }
 
 //56.关闭手柄音频输出 通道2的右声道
@@ -1178,17 +1234,47 @@ void drvDisableHandout(void)
 {
 	unsigned char val = 0;
 	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, &val), , "Error s_read_reg!");
+	
+	if(!(val & (0x1 << 2)))  //已经是0就不动作了
+	{
+		return;
+	}
+
 	val &= ~((unsigned char)0x1 << 2);
 	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, val), , "Error s_write_reg!");
+
+#ifdef VOL_MUTE_HANDLE_BY_REDUCE	
+		//对应的通道的音量也要调到0
+	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL27, &output_vol[1]), , "drvDisableHandout ES8388_DACCONTROL27 Error s_read_reg!");
+	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL27, 0), , "drvDisableHandout ES8388_DACCONTROL27  Error s_write_reg 0!");
+#endif	
+
 }
 
 //57.打开耳机音频输出，通道1的左右声道
 void drvEnableEarphout(void)
 {
 	unsigned char val = 0;
-	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, &val), , "Error s_read_reg!");
+	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, &val), , "drvEnableEarphout ES8388_DACPOWER Error s_read_reg!");
+
+	if(val & (0x3 << 4))
+	{
+		return ;
+	}
+	
 	val |= (0x3 << 4);
-	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, val), , "Error s_write_reg!");
+	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, val), , "drvEnableEarphout ES8388_DACPOWER Error s_write_reg!");
+
+#ifdef VOL_MUTE_HANDLE_BY_REDUCE	
+				//对应的通道的音量也要恢复
+	if(output_vol[2])
+	{
+		CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL24, output_vol[2]), , "drvEnableEarphout ES8388_DACCONTROL24  Error s_write_reg 0!");
+		CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL25, output_vol[2]), , "drvEnableEarphout ES8388_DACCONTROL25  Error s_write_reg 0!");
+	}
+#endif
+
+
 }
 
 //58.关闭耳机音频输出， 通道1的左右声道
@@ -1196,8 +1282,22 @@ void drvDisableEarphout(void)
 {
 	unsigned char val = 0;
 	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, &val), , "Error s_read_reg!");
+
+	if(!(val & (0x3 << 4)))   //已经是0，不再调整
+	{
+		return ;
+	}
+
 	val &= ~((unsigned char)0x3 << 4);
 	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACPOWER, val), , "Error s_write_reg!");
+#ifdef VOL_MUTE_HANDLE_BY_REDUCE	
+			//对应的通道的音量也要调到0
+	CHECK(!s_read_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL24, &output_vol[2]), , "drvDisableEarphout ES8388_DACCONTROL24 Error s_read_reg!");
+	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL24, 0), , "drvDisableEarphout ES8388_DACCONTROL24  Error s_write_reg 0!");
+	CHECK(!s_write_reg(es8388i2c_adapter_fd,ES8388_DACCONTROL25, 0), , "drvDisableEarphout ES8388_DACCONTROL25  Error s_write_reg 0!");
+#endif	
+
+
 }
 
 //59.选择面板麦克风语音输入，输入通道1

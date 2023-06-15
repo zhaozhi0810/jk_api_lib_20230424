@@ -554,7 +554,7 @@ int main(int argc, char *argv[])
 	
 	
 	//串口通信	
-	if(0 != uart_init(argc, argv))
+	if(0 >= uart_init(argc, argv))  //大于 0，都是正常的
 	{
 		printf("error:uart_init \n");
 		return -1;
