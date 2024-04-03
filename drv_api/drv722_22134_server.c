@@ -51,7 +51,7 @@ static const char* g_build_time_str = "Buildtime :"__DATE__" "__TIME__;   //获�
 struct threadpool* pool;  //线程池
 static pid_t api_pid = 0;
 	
-static int server_in_debug_mode = 0;   //服务端进入调试模式		
+int server_in_debug_mode = 0;   //服务端进入调试模式		
 
 #define NEED_MCUUART_REPLY 1    //需要单片机应答
 #define NO_NEED_MCUUART_REPLY  0  //不需要单片机应答
@@ -289,6 +289,11 @@ static void answer_to_api(msgq_t *pmsgbuf)
 				msgbuf.param1 = mcu_cmd_buf[0];   //获得返回值
 			}
 		break;
+		case eAPI_SET_7INCHPWM_CMD:  //7inch 背光设置
+			mcu_cmd_buf[0] = eMCU_SET_7INCHPWM_TYPE;
+			mcu_cmd_buf[1] = pmsgbuf->param1;  //调整的亮度
+			msgbuf.ret = send_mcu_data(mcu_cmd_buf,NO_NEED_MCUUART_REPLY);  //返回值为0，表示收到了数据			
+		break;
 		case eAPI_CONTROL_TTYS0_CMD:  //打开或关闭串口，不需要跟单片机通信
 			msgbuf.ret = 1; //表示又数据返回
 			msgbuf.param1 = 1;  //表示操作正常
@@ -299,9 +304,8 @@ static void answer_to_api(msgq_t *pmsgbuf)
 			}
 			else
 			{
-				uart_init(1,NULL);
+				uart_init();
 			}
-
 			
 		break;
 		default:
@@ -479,6 +483,8 @@ static int s_signal_init(void) {
 
 
 
+
+
 // static const char* my_opt = "vhpwb:d:";
 
 /* This function will open the uInput device. Please make 
@@ -549,14 +555,11 @@ int main(int argc, char *argv[])
 		s_write_reg(es8388i2c_adapter_fd, 0x3, 0x08);    //2023-03-16
 		close(es8388i2c_adapter_fd);
 	}
-	
-
-	
-	
+			
 	//串口通信	
-	if(0 >= uart_init(argc, argv))  //大于 0，都是正常的
+	if(0 > uart_init())  //大于等于 0，都是正常的
 	{
-		printf("error:uart_init \n");
+		printf("error:uart_init in function main\n");
 		return -1;
 	}
 
@@ -583,7 +586,7 @@ int main(int argc, char *argv[])
 	
 
 	if(server_in_debug_mode)	
-		printf("ServerDEBUG: serverProcess uart init ok!!!\n");
+		printf("ServerDEBUG: serverProcess uart mcu_recvSerial_thread init ok!!!\n");
 
 
 	//线程池初始化
@@ -598,6 +601,9 @@ int main(int argc, char *argv[])
 		printf("ServerDEBUG: serverProcess ready to run msg thread!!!\n");
 	//处理msg的接收信息。
 	msg_connect(NULL);   //这个线程启动后不再退出。接收msg的消息
+
+
+	printf("end main \n");
 	
 	while(1)
 	{				

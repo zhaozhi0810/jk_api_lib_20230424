@@ -119,7 +119,7 @@ static void *s_recv_event_thread(void *arg) {
 				if((ts.code == KEY_A)){  //手柄ptt，发指令给单片机，打开morse					
 					if(ts.value)
 					{
-						drvSetV12CrlOnOff(1);					
+						drvSetV12CrlOnOff(1);	//on				
 						printf("drvSetV12CrlOnOff(1)\n");
 					}
 					else

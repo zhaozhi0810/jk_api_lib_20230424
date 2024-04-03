@@ -54,6 +54,8 @@ static int convbaud(unsigned long int baudrate)
 	}
 }
 
+
+
 /*******************************************
  *	Setup comm attr
  *	fdcom: 串口文件描述符，pportinfo: 待设置的端口信息（请确认）
@@ -183,8 +185,9 @@ int PortSet(int fdcom, int 	baudrate,char stopbit,char fctl)
 
 	tcflush(fdcom, TCIOFLUSH);				//溢出的数据可以接收，但不读
 	tmp = tcsetattr(fdcom, TCSANOW, &termios_new);	//设置新属性，TCSANOW：所有改变立即生效	tcgetattr(fdcom, &termios_old);
-
+	//printf("tmp = %d\n",tmp);
 	return(tmp);
+
 }
 
 /*******************************************
@@ -327,8 +330,8 @@ int PortRecv(int fdcom, unsigned char *data, uint16_t  datalen,unsigned int time
 				// printf("\n");	
             }
         }               
-		else
-		   printf("No data within %d mseconds.\n",time_out);														
+		//else
+		//   printf("No data within %d mseconds.\n",time_out);														
 	}while(retry --);	//一次只能读到32个字节，看情况定吧
 	
 	return readlen;

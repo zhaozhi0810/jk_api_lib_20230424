@@ -2,7 +2,7 @@
 * @Author: dazhi
 * @Date:   2022-07-27 09:57:14
 * @Last Modified by:   dazhi
-* @Last Modified time: 2022-12-19 19:45:07
+* @Last Modified time: 2024-04-03 05:09:26
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,36 +42,36 @@ static int uart_MsgClear(void)
 
 
 //返回值0表示成功，其他表示失败
-//int Jc_uart_msgq_init(void)
-//{
-//	key_t key;
-//    
-//    key = ftok(UART_KEY_PATH,UART_KEY_ID);  //获取key值
-//    if(key < 0)
-//    {
-//        printf("ftok fail \n");
-//        fflush(stdout);
-//        return (-EAGAIN);
-//    }
-//    // 创建消息队列，如果消息队列存在，errno 会提示 eexist
-//    // 错误，此时只需要直接打开消息队列即可
-//    uart_msgid = msgget(key,IPC_CREAT|IPC_EXCL|0666);
-//    if(uart_msgid < 0)
-//    {
-//        if(errno == EEXIST) //文件存在错误提示
-//        {
-//            uart_msgid = msgget(key,0666);//打开消息队列
-//            uart_MsgClear();
-//        }
-//        else //其他错误退出
-//        {
-//            printf("msgget fail \n");
-//            return(-EAGAIN);
-//        }
-//    }
-//    //printf("msgget success!! uart_msgid = %d\n",uart_msgid);
-//    return 0;
-//}
+int Jc_uart_msgq_init(void)
+{
+	key_t key;
+   
+   key = ftok(UART_KEY_PATH,UART_KEY_ID);  //获取key值
+   if(key < 0)
+   {
+       printf("ftok fail \n");
+       fflush(stdout);
+       return (-EAGAIN);
+   }
+   // 创建消息队列，如果消息队列存在，errno 会提示 eexist
+   // 错误，此时只需要直接打开消息队列即可
+   uart_msgid = msgget(key,IPC_CREAT|IPC_EXCL|0666);
+   if(uart_msgid < 0)
+   {
+       if(errno == EEXIST) //文件存在错误提示
+       {
+           uart_msgid = msgget(key,0666);//打开消息队列
+           uart_MsgClear();
+       }
+       else //其他错误退出
+       {
+           printf("msgget fail \n");
+           return(-EAGAIN);
+       }
+   }
+   //printf("msgget success!! uart_msgid = %d\n",uart_msgid);
+   return 0;
+}
 
 
 

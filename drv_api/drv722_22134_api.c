@@ -358,7 +358,9 @@ int drvCoreBoardInit(void)
 
 	CoreBoardInit = 1;  //初始化成功
 	//drvSetV12CrlOnOff(1);
-		
+
+	printf("CoreBoardInit ok 2024-04-02\n");
+	
 	return 0;
 }
 
@@ -370,6 +372,10 @@ void drvCoreBoardExit(void)
 
 	if(exited)
 		return;
+
+	if(CoreBoardInit != 1)  //没有初始化
+		return;
+	
 
 	keyboard_exit();   //键盘处理线程退出
 	i2c_adapter_exit(es8388i2c_adapter_fd);  //iic的文件关闭
@@ -530,7 +536,8 @@ void drvEnableSpeaker(void)
 //9. 关闭强声器  //3399的AG4管脚置1  //接口板芯片U5的2脚
 void drvDisableWarning(void)
 {
-	drvSetLSPKOnOff(0);
+	//return;  //继电器不松口，用于测试，2023-10-20
+	drvSetLSPKOnOff(0);  
 }
 
 //10. 打开强声器  //3399的AG4管脚置0
@@ -661,6 +668,11 @@ int getKeyboardType(void)
 {
 	//使用3399的gpio读取
 	int result = 0;
+	static int version = 0;   //默认值是0；
+
+	if((version == 4) || (version == 6))    //已经获取过，则不重新获取,2024-04-03 只判断4和6
+		return version;
+	
 
 	if(assert_init())  //未初始化
 	return -1;
@@ -817,16 +829,41 @@ void drvSetLedBrt(int nBrtVal)
 
 
 
+  
 
 
 //26. 设置屏幕亮度  参数范围为[0,0xff]
 void drvSetLcdBrt(int nBrtVal)
 {
+	int param = 1;
+	static int s_lcd_type = -1;
+
 	if(nBrtVal < 0 || nBrtVal > 255)
 	{
 		return;
 	}
-	__setlcdbrt(nBrtVal);
+
+	//获取屏的类型，2024-04-02
+	if(s_lcd_type == -1)  //从来没有获取过，就要获取一下
+	{
+		s_lcd_type  = getKeyboardType();  //-1 表示没有访问。非6值 表示5寸屏，6表示7寸屏
+	}
+	//printf("s_lcd_type = %d,nBrtVal = %d\n",s_lcd_type,nBrtVal);
+	
+	//7寸是单片机控制，需要发送串口指令，2024-04-02 增加，修改
+	if(s_lcd_type == 6)  //7寸屏需要单片机控制
+	{
+		if(api_send_and_waitack(eAPI_SET_7INCHPWM_CMD,nBrtVal,&param))  //发送的第二个参数表示亮度，第三个无意义
+		{
+			printf("error : drvSetLcdBrt ,nBrtVal = %d\n",nBrtVal);
+		}
+	}
+	else
+	{
+		__setlcdbrt(nBrtVal);
+	}
+
+	
 }
 
 

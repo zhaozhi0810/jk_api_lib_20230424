@@ -34,8 +34,11 @@
 //static QUEUE keyCmdQueue;
 //static QUEUE mouseCmdQueue;
 
+extern int server_in_debug_mode;   //服务端进入调试模式	
 
-static 	int p_opt = 0;   //打印调试信息，默认不打印
+
+
+//static 	int p_opt = 0;   //打印调试信息，默认不打印
 static 	int uart_fd = -1;
 
 static volatile	unsigned short uart_recv_flag = 0;   //串口收到单片机数据
@@ -227,17 +230,18 @@ void* mcu_recvSerial_thread(void*arg)
 	int i=0,j,readn=0; //
 	unsigned char rBuf[COM_DATLEN*2]={0};
 	unsigned char datalen =COM_DATLEN,offset = 0;  //数据长度和缓存的偏移值
-#ifdef PRINT_DEBUG
-    printf("info_recv_proc_func\n");              
-#endif
+	if(server_in_debug_mode)
+    	printf("enter mcu_recvSerial_thread\n");              
+
 	while(1)
 	{	
 		readn = PortRecv(uart_fd, rBuf+offset,datalen,1000);  //从串口读取数据，COM_DATLEN表示需要读的字节数
-#ifdef PRINT_DEBUG
-		printf("info_recv_proc_func readn = %d\n",readn);
-#endif
-		if(p_opt)  //打印标志，非0则打印
-			printf("info_recv_proc_func recive printf \n");
+		if(server_in_debug_mode){
+
+			printf("mcu_recvSerial_thread readn = %d\n",readn);
+			//if(p_opt)  //打印标志，非0则打印
+			printf("mcu_recvSerial_thread recive printf \n");
+		}
 
 		if(readn > 0)
 		{
@@ -358,12 +362,15 @@ int send_mcu_data(const void* data,int isreply)//,unsigned int wait_time_50ms)
 
 
 
+#if 0
 
 static void show_version(char* name)
 {
     printf( "%s Buildtime :"__DATE__" "__TIME__,name);
 }
+
  
+
 static void usage(char* name)
 {
     show_version(name);
@@ -376,20 +383,20 @@ static void usage(char* name)
     printf("    -n , set com nonblock mode\n");
     exit(0);
 }
+#endif
 
 
-
-static const char* my_opt = "Dvhpwb:d:";
+//static const char* my_opt = "Dvhpwb:d:";
 
 /* This function will open the uInput device. Please make 
 sure that you have inserted the uinput.ko into kernel. */ 
-int uart_init(int argc, char *argv[]) 
+int uart_init(void) 
 {
 	int nonblock=0;
 //	int i=0;
 	char* com_port = "/dev/ttyS0";
 
-	int c;
+//	int c;
 	int baudrate = 115200;
 
 
@@ -398,9 +405,9 @@ int uart_init(int argc, char *argv[])
 
 //	create_queue(&keyCmdQueue);//´´½¨¼üÅÌÏûÏ¢»·ÐÎ¶ÓÁÐ
 //	create_queue(&mouseCmdQueue);//´´½¨Êó±êÏûÏ¢»·ÐÎ¶ÓÁÐ
-	if(argv)
-		printf("Program %s is running\n", argv[0]);
-	
+	//if(argv)
+	//	printf("Program %s is running,argc = %d\n", argv[0],argc);
+#if 0	
     if(argc > 1)
 	{
 	//	printf("usage: ./kmUtil keyboardComName mouseComName\n");		
@@ -458,21 +465,20 @@ int uart_init(int argc, char *argv[])
 	        usage(argv[0]);
 	    }
 	}
-	
+#endif	
 	
 	uart_fd = PortOpen(com_port,nonblock);   //²ÎÊý2Îª0±íÊ¾Îª×èÈûÄ£Ê½£¬·Ç0Îª·Ç×èÈûÄ£Ê½
 	if( uart_fd < 0 )
 	{
-		uinput_device_close();
-		printf("Error: open serial port(%s) error.\n", com_port);
-	
+		//uinput_device_close();  //2024-04-02
+		printf("Error: open serial port(%s) error.\n", com_port);	
 		exit(1);
 	}
 
 	//2022-12-19 做一个串口的消息队列，应对多线程的串口数据发送
-	//Jc_uart_msgq_init();
-
-	return PortSet(uart_fd,baudrate,1,'N');    //设置波特率等	
+	Jc_uart_msgq_init();
+	//printf("11233\n");
+	return PortSet(uart_fd,baudrate,1,'N');    //设置波特率等	，返回0表示成功，-1表示失败
 }
 
 

@@ -59,7 +59,7 @@ typedef enum
 
 
 
-int uart_init(int argc, char *argv[]) ;
+int uart_init(void) ;
 
 //负责接收数据的线程
 /*
